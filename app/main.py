@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from scalar_fastapi import get_scalar_api_reference
 
 app = FastAPI()
@@ -54,9 +54,72 @@ def get_latest_shipment() -> dict[str, Any]:
 def get_shipment(id: int | None = None) -> dict[str, Any]:
 
     if id not in shipments:
-        return {"detail": "Given id doesn't exist."}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Given id does not exist.",
+        )
 
     return shipments[id]
+
+
+@app.post("/shipment")
+def submit_shipment(data: dict[str, Any]) -> dict[str, Any]:
+
+    weight = data["weight"]
+    content = data["content"]
+
+    if weight > 25:
+        raise HTTPException(
+            status_code=status.HTTP_406_NOT_ACCEPTABLE,
+            detail="Maximum weight is 25 kgs.",
+        )
+
+    new_id = max(shipments.keys()) + 1
+
+    shipments[new_id] = {
+        "content": content,
+        "weight": weight,
+        "status": "placed",
+    }
+
+    return {"id": new_id}
+
+
+@app.put("/shipment")
+def shipment_update(
+    id: int,
+    content: str,
+    weight: float,
+    status: str,
+) -> dict[str, Any]:
+    shipments[id] = {
+        "content": content,
+        "weight": weight,
+        "status": status,
+    }
+
+    return shipments[id]
+
+
+@app.patch("/shipment")
+def patch_shipment(id: int, body: dict) -> dict[str, Any]:
+
+    shipment = shipments[id]
+
+    shipment.update(body)
+
+    shipments[id] = shipment
+
+    return shipment
+
+
+@app.delete("/shipment")
+def delete_shipment(id: int) -> dict[str, str]:
+    shipments.pop(id)
+    return {"detail": f"Shipment with #{id} is deleted!"}
+
+
+# Scalar Endpoint
 
 
 @app.get("/scalar", include_in_schema=False)
