@@ -1,57 +1,58 @@
-from typing import Any
-
 from fastapi import FastAPI, HTTPException, status
 from scalar_fastapi import get_scalar_api_reference
+
+from .schemas import ShipmentCreate, ShipmentRead, ShipmentUpdate
 
 app = FastAPI()
 
 shipments = {
     12001: {
-        "weight": 0.5,
+        "weight": 1.5,
         "content": "clothing",
+        "destination": 11298,
         "status": "placed",
     },
     12002: {
         "weight": 2.3,
         "content": "electronics",
-        "status": "in transit",
+        "destination": 11300,
+        "status": "in_transit",
     },
     12003: {
         "weight": 1.5,
         "content": "books",
+        "destination": 11301,
         "status": "delivered",
     },
     12004: {
         "weight": 5.0,
         "content": "furniture",
+        "destination": 11302,
         "status": "placed",
     },
     12005: {
-        "weight": 0.3,
+        "weight": 1.3,
         "content": "documents",
-        "status": "in transit",
+        "destination": 11303,
+        "status": "in_transit",
     },
     12006: {
         "weight": 3.8,
         "content": "kitchen items",
+        "destination": 11304,
         "status": "placed",
     },
     12007: {
         "weight": 1.2,
         "content": "toys",
+        "destination": 11305,
         "status": "delivered",
     },
 }
 
 
-@app.get("/shipment/latest")
-def get_latest_shipment() -> dict[str, Any]:
-    id = max(shipments.keys())
-    return shipments[id]
-
-
-@app.get("/shipment")
-def get_shipment(id: int | None = None) -> dict[str, Any]:
+@app.get("/shipment", response_model=ShipmentRead)
+def get_shipment(id: int | None = None):
 
     if id not in shipments:
         raise HTTPException(
@@ -63,54 +64,23 @@ def get_shipment(id: int | None = None) -> dict[str, Any]:
 
 
 @app.post("/shipment")
-def submit_shipment(data: dict[str, Any]) -> dict[str, Any]:
-
-    weight = data["weight"]
-    content = data["content"]
-
-    if weight > 25:
-        raise HTTPException(
-            status_code=status.HTTP_406_NOT_ACCEPTABLE,
-            detail="Maximum weight is 25 kgs.",
-        )
-
+def submit_shipment(shipment: ShipmentCreate) -> dict[str, int]:
+    # Create and assign shipment a new id
     new_id = max(shipments.keys()) + 1
-
+    # Add to shipment dict
     shipments[new_id] = {
-        "content": content,
-        "weight": weight,
+        **shipment.model_dump(),
         "status": "placed",
     }
-
+    # Return id for later use
     return {"id": new_id}
 
 
-@app.put("/shipment")
-def shipment_update(
-    id: int,
-    content: str,
-    weight: float,
-    status: str,
-) -> dict[str, Any]:
-    shipments[id] = {
-        "content": content,
-        "weight": weight,
-        "status": status,
-    }
-
+@app.patch("/shipment", response_model=ShipmentRead)
+def update_shipment(id: int, body: ShipmentUpdate):
+    # Update data with given fields
+    shipments[id].update(body.model_dump(exclude_none=True))
     return shipments[id]
-
-
-@app.patch("/shipment")
-def patch_shipment(id: int, body: dict) -> dict[str, Any]:
-
-    shipment = shipments[id]
-
-    shipment.update(body)
-
-    shipments[id] = shipment
-
-    return shipment
 
 
 @app.delete("/shipment")
