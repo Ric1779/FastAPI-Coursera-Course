@@ -1,54 +1,55 @@
 from fastapi import FastAPI, HTTPException, status
 from scalar_fastapi import get_scalar_api_reference
 
+from .database import save, shipments
 from .schemas import ShipmentCreate, ShipmentRead, ShipmentUpdate
 
 app = FastAPI()
 
-shipments = {
-    12001: {
-        "weight": 1.5,
-        "content": "clothing",
-        "destination": 11298,
-        "status": "placed",
-    },
-    12002: {
-        "weight": 2.3,
-        "content": "electronics",
-        "destination": 11300,
-        "status": "in_transit",
-    },
-    12003: {
-        "weight": 1.5,
-        "content": "books",
-        "destination": 11301,
-        "status": "delivered",
-    },
-    12004: {
-        "weight": 5.0,
-        "content": "furniture",
-        "destination": 11302,
-        "status": "placed",
-    },
-    12005: {
-        "weight": 1.3,
-        "content": "documents",
-        "destination": 11303,
-        "status": "in_transit",
-    },
-    12006: {
-        "weight": 3.8,
-        "content": "kitchen items",
-        "destination": 11304,
-        "status": "placed",
-    },
-    12007: {
-        "weight": 1.2,
-        "content": "toys",
-        "destination": 11305,
-        "status": "delivered",
-    },
-}
+# shipments = {
+#     12001: {
+#         "weight": 1.5,
+#         "content": "clothing",
+#         "destination": 11298,
+#         "status": "placed",
+#     },
+#     12002: {
+#         "weight": 2.3,
+#         "content": "electronics",
+#         "destination": 11300,
+#         "status": "in_transit",
+#     },
+#     12003: {
+#         "weight": 1.5,
+#         "content": "books",
+#         "destination": 11301,
+#         "status": "delivered",
+#     },
+#     12004: {
+#         "weight": 5.0,
+#         "content": "furniture",
+#         "destination": 11302,
+#         "status": "placed",
+#     },
+#     12005: {
+#         "weight": 1.3,
+#         "content": "documents",
+#         "destination": 11303,
+#         "status": "in_transit",
+#     },
+#     12006: {
+#         "weight": 3.8,
+#         "content": "kitchen items",
+#         "destination": 11304,
+#         "status": "placed",
+#     },
+#     12007: {
+#         "weight": 1.2,
+#         "content": "toys",
+#         "destination": 11305,
+#         "status": "delivered",
+#     },
+# }
 
 
 @app.get("/shipment", response_model=ShipmentRead)
@@ -70,8 +71,10 @@ def submit_shipment(shipment: ShipmentCreate) -> dict[str, int]:
     # Add to shipment dict
     shipments[new_id] = {
         **shipment.model_dump(),
+        "id": new_id,
         "status": "placed",
     }
+    save()
     # Return id for later use
     return {"id": new_id}
 
