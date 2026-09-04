@@ -1,13 +1,8 @@
-from enum import Enum
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
-class ShipmentStatus(str, Enum):
-    placed = "placed"
-    in_transit = "in_transit"
-    out_for_delivery = "out_for_delivery"
-    delivered = "delivered"
+from app.database.models import ShipmentStatus
 
 
 class BaseShipment(BaseModel):
@@ -18,6 +13,7 @@ class BaseShipment(BaseModel):
 
 class ShipmentRead(BaseShipment):
     status: ShipmentStatus
+    estimated_delivery: datetime
 
 
 class ShipmentCreate(BaseShipment):
@@ -25,7 +21,5 @@ class ShipmentCreate(BaseShipment):
 
 
 class ShipmentUpdate(BaseModel):
-    content: str | None = Field(default=None)
-    weight: float | None = Field(le=25, default=None)
-    destination: int | None = Field(default=None)
-    status: ShipmentStatus
+    status: ShipmentStatus | None = Field(default=None)
+    estimated_delivery: datetime | None = Field(default=None)
