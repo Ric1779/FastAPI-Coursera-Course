@@ -1,0 +1,42 @@
+from fastapi import APIRouter, HTTPException, status
+
+from app.database.models import Shipment
+
+from ..dependencies import ShipmentServiceDep
+from ..schemas.shipment import ShipmentCreate, ShipmentRead, ShipmentUpdate
+
+router = APIRouter(prefix="/shipment", tags=["Shipment"])
+
+
+@router.get("/", response_model=ShipmentRead)
+async def get_shipment(id: int, service: ShipmentServiceDep):
+
+    shipment = await service.get(id)
+
+    if shipment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Given id does not exists.",
+        )
+
+    return shipment
+
+
+@router.post("/")
+async def submit_shipment(
+    shipment: ShipmentCreate, service: ShipmentServiceDep
+) -> Shipment:
+    return await service.add(shipment)
+
+
+@router.patch("/")
+async def update_shipment(
+    id: int, shipment_update: ShipmentUpdate, service: ShipmentServiceDep
+) -> Shipment:
+    return await service.update(id, shipment_update)
+
+
+@router.delete("/")
+async def delete_shipment(id: int, service: ShipmentServiceDep) -> dict[str, str]:
+    await service.delete(id)
+    return {"detail": f"Shipment with #{id} is deleted!"}
