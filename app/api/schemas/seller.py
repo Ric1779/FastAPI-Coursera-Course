@@ -11,4 +11,4 @@ class SellerCreate(BaseSeller):
 
 
 class SellerRead(BaseSeller):
-    pass
+    id: int
