@@ -1,13 +1,10 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.dependencies import SellerServiceDep, SessionDep
+from app.api.dependencies import SellerServiceDep
 from app.api.schemas.seller import SellerCreate, SellerRead
-from app.core.security import oauth2_scheme
-from app.database.models import Seller
-from app.utils import decode_access_token
 
 router = APIRouter(prefix="/seller", tags=["Seller"])
 
@@ -33,22 +30,3 @@ async def login_seller(
         "access_token": token,
         "type": "jwt",
     }
-
-
-# Random Note: OAuth scheme only picks up the token from the header
-@router.get("/dashboard", response_model=SellerRead)
-async def get_dashboard(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    session: SessionDep,
-):
-    data = decode_access_token(token)
-
-    if data is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
-        )
-
-    seller = await session.get(Seller, data["user"]["id"])
-
-    return seller

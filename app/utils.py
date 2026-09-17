@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import jwt
 
@@ -12,7 +12,7 @@ def generate_access_token(
     return jwt.encode(
         payload={
             **data,
-            "exp": datetime.now() + expiry,  # noqa: DTZ005
+            "exp": datetime.now(timezone.utc) + expiry,
         },
         algorithm=security_settings.JWT_ALGORITHM,
         key=security_settings.JWT_SECRET,

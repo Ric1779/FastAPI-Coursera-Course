@@ -9,7 +9,11 @@ router = APIRouter(prefix="/shipment", tags=["Shipment"])
 
 
 @router.get("/", response_model=ShipmentRead)
-async def get_shipment(id: int, service: ShipmentServiceDep):
+async def get_shipment(
+    id: int,
+    service: ShipmentServiceDep,
+    _: SellerDep,
+):
 
     shipment = await service.get(id)
 
@@ -26,19 +30,26 @@ async def get_shipment(id: int, service: ShipmentServiceDep):
 async def submit_shipment(
     shipment: ShipmentCreate,
     service: ShipmentServiceDep,
-    seller: SellerDep,
+    _: SellerDep,
 ) -> Shipment:
     return await service.add(shipment)
 
 
 @router.patch("/")
 async def update_shipment(
-    id: int, shipment_update: ShipmentUpdate, service: ShipmentServiceDep
+    id: int,
+    shipment_update: ShipmentUpdate,
+    service: ShipmentServiceDep,
+    _: SellerDep,
 ) -> Shipment:
     return await service.update(id, shipment_update)
 
 
 @router.delete("/")
-async def delete_shipment(id: int, service: ShipmentServiceDep) -> dict[str, str]:
+async def delete_shipment(
+    id: int,
+    service: ShipmentServiceDep,
+    _: SellerDep,
+) -> dict[str, str]:
     await service.delete(id)
     return {"detail": f"Shipment with #{id} is deleted!"}
