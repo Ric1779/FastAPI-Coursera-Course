@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -11,4 +13,4 @@ class SellerCreate(BaseSeller):
 
 
 class SellerRead(BaseSeller):
-    id: int
+    id: UUID

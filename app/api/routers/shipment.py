@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.database.models import Shipment
@@ -10,7 +12,7 @@ router = APIRouter(prefix="/shipment", tags=["Shipment"])
 
 @router.get("/", response_model=ShipmentRead)
 async def get_shipment(
-    id: int,
+    id: UUID,
     service: ShipmentServiceDep,
     _: SellerDep,
 ):
@@ -26,18 +28,18 @@ async def get_shipment(
     return shipment
 
 
-@router.post("/")
+@router.post("/", response_model=ShipmentRead)
 async def submit_shipment(
     shipment: ShipmentCreate,
     service: ShipmentServiceDep,
-    _: SellerDep,
+    seller: SellerDep,
 ) -> Shipment:
-    return await service.add(shipment)
+    return await service.add(shipment, seller)
 
 
 @router.patch("/")
 async def update_shipment(
-    id: int,
+    id: UUID,
     shipment_update: ShipmentUpdate,
     service: ShipmentServiceDep,
     _: SellerDep,
@@ -47,7 +49,7 @@ async def update_shipment(
 
 @router.delete("/")
 async def delete_shipment(
-    id: int,
+    id: UUID,
     service: ShipmentServiceDep,
     _: SellerDep,
 ) -> dict[str, str]:
