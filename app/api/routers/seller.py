@@ -3,8 +3,9 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.dependencies import SellerServiceDep
+from app.api.dependencies import SellerServiceDep, get_access_token
 from app.api.schemas.seller import SellerCreate, SellerRead
+from app.database.redis import add_jti_to_blacklist
 
 router = APIRouter(prefix="/seller", tags=["Seller"])
 
@@ -30,3 +31,13 @@ async def login_seller(
         "access_token": token,
         "type": "jwt",
     }
+
+
+# Logout the seller
+@router.get("/logout")
+async def logout_seller(
+    token_data: Annotated[dict, Depends(get_access_token)],
+):
+    await add_jti_to_blacklist(token_data["jti"])
+
+    return {"detail": "Succesfully logged out!"}
