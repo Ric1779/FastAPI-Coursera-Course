@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.database.models import Shipment
 
-from ..dependencies import SellerDep, ShipmentServiceDep
+from ..dependencies import DeliveryPartnerDep, SellerDep, ShipmentServiceDep
 from ..schemas.shipment import ShipmentCreate, ShipmentRead, ShipmentUpdate
 
 router = APIRouter(prefix="/shipment", tags=["Shipment"])
@@ -42,7 +42,7 @@ async def update_shipment(
     id: UUID,
     shipment_update: ShipmentUpdate,
     service: ShipmentServiceDep,
-    _: SellerDep,
+    _: DeliveryPartnerDep,
 ) -> Shipment:
     return await service.update(id, shipment_update)
 

@@ -4,27 +4,30 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import oauth2_scheme
-from app.database.models import Seller
+from app.core.security import oauth2_scheme_partner, oauth2_scheme_seller
+from app.database.models import DeliveryPartner, Seller
 from app.database.redis import is_jti_blacklisted
 from app.database.session import get_session
+from app.services.delivery_partner import DeliveryPartnerService
 from app.services.seller import SellerService
 from app.services.shipment import ShipmentService
 from app.utils import decode_access_token
 
-###############################################
-# Asynchronous database session dep
-###############################################
+###########################################################
+#          Asynchronous database session dep
+###########################################################
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
-###############################################
-#           Access token data dep
-###############################################
+###########################################################
+#                 Access token data dep
+###########################################################
 
 
-async def get_access_token(token: Annotated[str, Depends(oauth2_scheme)]) -> dict:
+async def _get_access_token_data(
+    token: str,
+) -> dict:
     data = decode_access_token(token)
 
     if data is None or await is_jti_blacklisted(data["jti"]):
@@ -36,32 +39,93 @@ async def get_access_token(token: Annotated[str, Depends(oauth2_scheme)]) -> dic
     return data
 
 
+# Seller
+
+
+# Seller access token data
+async def get_seller_access_token_data(
+    token: Annotated[str, Depends(oauth2_scheme_seller)],
+):
+    return await _get_access_token_data(token)
+
+
 # Current Seller
 async def get_current_seller(
-    token_data: Annotated[dict, Depends(get_access_token)],
+    token_data: Annotated[dict, Depends(get_seller_access_token_data)],
     session: SessionDep,
 ):
-    return await session.get(Seller, UUID(token_data["user"]["id"]))
+    seller = await session.get(Seller, UUID(token_data["user"]["id"]))
+
+    if seller is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not Authorized",
+        )
+
+    return seller
 
 
 SellerDep = Annotated[Seller, Depends(get_current_seller)]
 
 
-###############################################
-#               Shipment dep
-###############################################
+# Delivery Partner
+
+
+# Delivery Partner access token data
+async def get_partner_access_token_data(
+    token: Annotated[str, Depends(oauth2_scheme_partner)],
+):
+    return await _get_access_token_data(token)
+
+
+# Current Delivery Partner
+async def get_current_partner(
+    token_data: Annotated[dict, Depends(get_partner_access_token_data)],
+    session: SessionDep,
+):
+    partner = await session.get(DeliveryPartner, UUID(token_data["user"]["id"]))
+
+    if partner is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authorized",
+        )
+
+    return partner
+
+
+DeliveryPartnerDep = Annotated[DeliveryPartner, Depends(get_current_partner)]
+
+
+###########################################################
+#               Delivery Partner Service dep
+###########################################################
+
+
+def get_partner_service(session: SessionDep):
+    return DeliveryPartnerService(session)
+
+
+DeliveryPartnerServiceDep = Annotated[
+    DeliveryPartnerService, Depends(get_partner_service)
+]
+
+
+###########################################################
+#                 Shipment Service dep
+###########################################################
 
 
 def get_shipment_service(session: SessionDep):
-    return ShipmentService(session)
+    return ShipmentService(session, DeliveryPartnerService(session))
 
 
 ShipmentServiceDep = Annotated[ShipmentService, Depends(get_shipment_service)]
 
 
-###############################################
-#                Seller dep
-###############################################
+###########################################################
+#                    Seller Service dep
+###########################################################
 
 
 def get_seller_service(session: SessionDep):

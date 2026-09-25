@@ -6,29 +6,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.shipment import ShipmentCreate, ShipmentUpdate
 from app.database.models import Seller, Shipment, ShipmentStatus
+from app.services.base import BaseService
+from app.services.delivery_partner import DeliveryPartnerService
 
 
-class ShipmentService:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+class ShipmentService(BaseService[Shipment]):
+    def __init__(self, session: AsyncSession, partner_service: DeliveryPartnerService):
+        super().__init__(Shipment, session)
+        self.partner_service = partner_service
 
-    async def get(self, id: UUID) -> Shipment | None:  # type: ignore
-        return await self.session.get(Shipment, id)
+    async def get(self, id: UUID) -> Shipment | None:
+        return await self._get(id)
 
-    async def add(self, shipment_create: ShipmentCreate, seller: Seller) -> Shipment:  # type: ignore
-        new_shipment = Shipment(
+    async def add(self, shipment_create: ShipmentCreate, seller: Seller) -> Shipment:
+        new_shipment = self.model(
             **shipment_create.model_dump(),
             status=ShipmentStatus.placed,
             estimated_delivery=datetime.now() + timedelta(days=1),  # noqa: DTZ005
             seller_id=seller.id,
         )
-        self.session.add(new_shipment)
-        await self.session.commit()
-        await self.session.refresh(new_shipment)
 
-        return new_shipment
+        partner = await self.partner_service.assign_shipment(new_shipment)
+        if partner:
+            new_shipment.delivery_partner_id = partner.id
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Currently we don't have any delivery partner available.",
+            )
 
-    async def update(self, id: UUID, shipment_update: ShipmentUpdate) -> Shipment:  # type: ignore
+        return await self._add(new_shipment)
+
+    async def update(self, id: UUID, shipment_update: ShipmentUpdate) -> Shipment:
 
         update = shipment_update.model_dump(exclude_none=True)
 
@@ -48,12 +57,9 @@ class ShipmentService:
 
         shipment.sqlmodel_update(update)
 
-        self.session.add(shipment)
-        await self.session.commit()
-        await self.session.refresh(shipment)
-
-        return shipment
+        return await self._update(shipment)
 
     async def delete(self, id: UUID) -> None:
-        await self.session.delete(await self.get(id))
-        await self.session.commit()
+        shipment = await self.get(id)
+        if shipment is not None:
+            await self._delete(shipment)
