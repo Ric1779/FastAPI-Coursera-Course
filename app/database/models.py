@@ -60,6 +60,13 @@ class Shipment(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "selectin"},
     )
 
+    @property
+    def status(self) -> ShipmentStatus:
+        """Current status = latest timeline event (status no longer on shipment row)."""
+        if not self.timeline:
+            return ShipmentStatus.placed
+        return max(self.timeline, key=lambda event: event.created_at).status
+
 
 # UUID primary key (PK) patterns:
 # A) Field(default_factory=uuid4, primary_key=True) — Pydantic sets id on construct; safe for mixins.
@@ -77,8 +84,8 @@ class ShipmentEvent(SQLModel, table=True):
     status: ShipmentStatus
     description: str | None = Field(default=None)
 
-    shipment_id: UUID = Field(foreign_key="shipment.id")
-    shipment: Shipment = Relationship(
+    shipment_id: UUID | None = Field(default=None, foreign_key="shipment.id")
+    shipment: Shipment | None = Relationship(
         back_populates="timeline",
         sa_relationship_kwargs={"lazy": "selectin"},
     )

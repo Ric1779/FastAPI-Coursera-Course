@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.shipment import ShipmentCreate, ShipmentUpdate
-from app.database.models import Seller, Shipment, ShipmentStatus
+from app.database.models import Seller, Shipment, ShipmentEvent, ShipmentStatus
 from app.services.base import BaseService
 from app.services.delivery_partner import DeliveryPartnerService
 
@@ -21,9 +21,17 @@ class ShipmentService(BaseService[Shipment]):
     async def add(self, shipment_create: ShipmentCreate, seller: Seller) -> Shipment:
         new_shipment = self.model(
             **shipment_create.model_dump(),
-            status=ShipmentStatus.placed,
             estimated_delivery=datetime.now() + timedelta(days=1),  # noqa: DTZ005
             seller_id=seller.id,
+        )
+        # Status lives on ShipmentEvent now — seed the timeline.
+        new_shipment.timeline.append(
+            ShipmentEvent(
+                location=new_shipment.destination,
+                status=ShipmentStatus.placed,
+                description="Shipment created",
+                # shipment_id set by relationship on flush
+            )
         )
 
         partner = await self.partner_service.assign_shipment(new_shipment)
@@ -38,7 +46,6 @@ class ShipmentService(BaseService[Shipment]):
         return await self._add(new_shipment)
 
     async def update(self, id: UUID, shipment_update: ShipmentUpdate) -> Shipment:
-
         update = shipment_update.model_dump(exclude_none=True)
 
         if not update:
@@ -53,6 +60,16 @@ class ShipmentService(BaseService[Shipment]):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Shipment not found.",
+            )
+
+        new_status = update.pop("status", None)
+        if new_status is not None:
+            shipment.timeline.append(
+                ShipmentEvent(
+                    location=shipment.destination,
+                    status=new_status,
+                    shipment_id=shipment.id,
+                )
             )
 
         shipment.sqlmodel_update(update)
