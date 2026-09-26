@@ -8,8 +8,15 @@ engine = create_async_engine(url=db_settings.POSTGRES_URL, echo=True)
 
 
 async def create_db_tables():
+    # Prefer Alembic for schema changes. create_all only creates *missing*
+    # tables — if it runs before a migration, autogenerate will skip them.
     async with engine.begin() as connection:
-        from .models import Seller, Shipment  # noqa: F401
+        from .models import (  # noqa: F401
+            DeliveryPartner,
+            Seller,
+            Shipment,
+            ShipmentEvent,
+        )
 
         await connection.run_sync(SQLModel.metadata.create_all)
 
