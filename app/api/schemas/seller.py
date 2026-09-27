@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class BaseSeller(BaseModel):
@@ -10,6 +10,8 @@ class BaseSeller(BaseModel):
 
 class SellerCreate(BaseSeller):
     password: str
+    address: str | None = Field(default=None)
+    zip_code: int | None = Field(default=None)
 
 
 class SellerRead(BaseSeller):

@@ -26,3 +26,4 @@ class BaseService(Generic[ModelType]):
 
     async def _delete(self, entity: ModelType) -> None:
         await self.session.delete(entity)
+        await self.session.commit()

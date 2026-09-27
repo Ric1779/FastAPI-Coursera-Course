@@ -37,21 +37,20 @@ async def submit_shipment(
     return await service.add(shipment, seller)
 
 
-@router.patch("/")
+@router.patch("/", response_model=ShipmentRead)
 async def update_shipment(
     id: UUID,
     shipment_update: ShipmentUpdate,
     service: ShipmentServiceDep,
-    _: DeliveryPartnerDep,
+    partner: DeliveryPartnerDep,
 ) -> Shipment:
-    return await service.update(id, shipment_update)
+    return await service.update(id, shipment_update, partner)
 
 
-@router.delete("/")
-async def delete_shipment(
+@router.get("/cancel", response_model=ShipmentRead)
+async def cancel_shipment(
     id: UUID,
     service: ShipmentServiceDep,
-    _: SellerDep,
-) -> dict[str, str]:
-    await service.delete(id)
-    return {"detail": f"Shipment with #{id} is deleted!"}
+    seller: SellerDep,
+):
+    return await service.cancel(id, seller)

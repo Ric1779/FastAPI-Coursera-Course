@@ -11,6 +11,7 @@ from app.database.session import get_session
 from app.services.delivery_partner import DeliveryPartnerService
 from app.services.seller import SellerService
 from app.services.shipment import ShipmentService
+from app.services.shipment_event import ShipmentEventService
 from app.utils import decode_access_token
 
 ###########################################################
@@ -117,7 +118,11 @@ DeliveryPartnerServiceDep = Annotated[
 
 
 def get_shipment_service(session: SessionDep):
-    return ShipmentService(session, DeliveryPartnerService(session))
+    return ShipmentService(
+        session,
+        DeliveryPartnerService(session),
+        ShipmentEventService(session),
+    )
 
 
 ShipmentServiceDep = Annotated[ShipmentService, Depends(get_shipment_service)]

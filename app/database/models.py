@@ -25,6 +25,7 @@ class ShipmentStatus(str, Enum):
     in_transit = "in_transit"
     out_for_delivery = "out_for_delivery"
     delivered = "delivered"
+    cancelled = "cancelled"
 
 
 # A SQLModel is a pydantic model as well, so it comes with all the data validation and other checks
@@ -61,10 +62,10 @@ class Shipment(SQLModel, table=True):
     )
 
     @property
-    def status(self) -> ShipmentStatus:
+    def status(self) -> ShipmentStatus | None:
         """Current status = latest timeline event (status no longer on shipment row)."""
         if not self.timeline:
-            return ShipmentStatus.placed
+            return None
         return max(self.timeline, key=lambda event: event.created_at).status
 
 
@@ -80,10 +81,19 @@ class ShipmentEvent(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.now)
 
-    location: int
-    status: ShipmentStatus
+    location: int | None = Field(default=None)
+    status: ShipmentStatus | None = Field(default=None)
     description: str | None = Field(default=None)
 
+    # previous implementation: shipment_id: UUID = Field(foreign_key="shipment.id")
+    # ShipmentEvent requires shipment_id, but it's filled by the relationship on flush.
+    # So, type checker throws an error -> {Argument missing for parameter "shipment_id"}
+    # ShipmentEvent required shipment_id, but on create the FK isn’t known yet — SQLAlchemy
+    # fills it when you append to timeline and flush.
+
+    # Fix: shipment_id is now optional (default=None) so you can build the event first;
+    # the relationship sets the FK on save. On update, we pass shipment_id=shipment.id
+    # explicitly since the shipment already exists.
     shipment_id: UUID | None = Field(default=None, foreign_key="shipment.id")
     shipment: Shipment | None = Relationship(
         back_populates="timeline",
@@ -156,6 +166,7 @@ class DeliveryPartner(User, table=True):
             shipment
             for shipment in self.shipments
             if shipment.status != ShipmentStatus.delivered
+            or shipment.status != ShipmentStatus.cancelled
         ]
 
     @property
