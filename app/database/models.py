@@ -39,6 +39,10 @@ class Shipment(SQLModel, table=True):
             primary_key=True,
         )
     )
+    created_at: datetime = Field(default_factory=datetime.now)
+    client_contact_email: EmailStr
+    client_contact_phone: int | None
+
     content: str
     weight: float = Field(le=25)
     destination: int
@@ -107,6 +111,7 @@ class ShipmentEvent(SQLModel, table=True):
 class User(SQLModel):
     name: str
     email: EmailStr
+    email_verified: bool = Field(default=False)
     password_hash: str = Field(exclude=True)
 
     # In the course the person had used sa_column inside Field, he said that's required

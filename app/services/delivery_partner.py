@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import any_, select
 
@@ -12,11 +12,11 @@ from app.services.user import UserService
 
 
 class DeliveryPartnerService(UserService[DeliveryPartner]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(DeliveryPartner, session)
+    def __init__(self, session: AsyncSession, tasks: BackgroundTasks):
+        super().__init__(DeliveryPartner, session, tasks)
 
     async def add(self, partner_create: DeliveryPartnerCreate) -> DeliveryPartner:
-        return await self._add_user(partner_create.model_dump())
+        return await self._add_user(partner_create.model_dump(), "partner")
 
     async def update(self, partner: DeliveryPartner) -> DeliveryPartner:
         return await self._update(partner)

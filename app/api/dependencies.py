@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import oauth2_scheme_partner, oauth2_scheme_seller
@@ -99,12 +99,31 @@ DeliveryPartnerDep = Annotated[DeliveryPartner, Depends(get_current_partner)]
 
 
 ###########################################################
+#                 Shipment Service dep
+###########################################################
+
+
+def get_shipment_service(
+    session: SessionDep,
+    tasks: BackgroundTasks,
+):
+    return ShipmentService(
+        session,
+        DeliveryPartnerService(session, tasks),
+        ShipmentEventService(session, tasks),
+    )
+
+
+ShipmentServiceDep = Annotated[ShipmentService, Depends(get_shipment_service)]
+
+
+###########################################################
 #               Delivery Partner Service dep
 ###########################################################
 
 
-def get_partner_service(session: SessionDep):
-    return DeliveryPartnerService(session)
+def get_partner_service(session: SessionDep, tasks: BackgroundTasks):
+    return DeliveryPartnerService(session, tasks)
 
 
 DeliveryPartnerServiceDep = Annotated[
@@ -113,28 +132,12 @@ DeliveryPartnerServiceDep = Annotated[
 
 
 ###########################################################
-#                 Shipment Service dep
-###########################################################
-
-
-def get_shipment_service(session: SessionDep):
-    return ShipmentService(
-        session,
-        DeliveryPartnerService(session),
-        ShipmentEventService(session),
-    )
-
-
-ShipmentServiceDep = Annotated[ShipmentService, Depends(get_shipment_service)]
-
-
-###########################################################
 #                    Seller Service dep
 ###########################################################
 
 
-def get_seller_service(session: SessionDep):
-    return SellerService(session)
+def get_seller_service(session: SessionDep, tasks: BackgroundTasks):
+    return SellerService(session, tasks)
 
 
 SellerServiceDep = Annotated[SellerService, Depends(get_seller_service)]

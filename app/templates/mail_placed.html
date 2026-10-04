@@ -1,0 +1,22 @@
+<body>
+    <p>Hi 👋,</p>
+    <p>Your order with {{ seller }} is picked up by</p>
+    <p>
+        {{ partner }} and is on it's way to you. Use the below link to track your
+        order.
+    </p>
+    <a href="http://localhost:8000/shipment/track?id={{ id }}" style="
+      display: inline-block;
+      margin-top: 8px;
+      padding: 12px 22px;
+      background-color: #0f766e;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+    ">Track Now</a>
+    <br />
+    <p>Powered by FastShip</p>
+</body> 
