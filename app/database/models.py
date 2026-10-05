@@ -41,7 +41,7 @@ class Shipment(SQLModel, table=True):
     )
     created_at: datetime = Field(default_factory=datetime.now)
     client_contact_email: EmailStr
-    client_contact_phone: int | None
+    client_contact_phone: str | None
 
     content: str
     weight: float = Field(le=25)

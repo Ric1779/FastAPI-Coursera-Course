@@ -43,6 +43,10 @@ class NotificationSettings(BaseSettings):
     USE_CREDENTIALS: bool = True
     VALIDATE_CERTS: bool = True
 
+    TWILIO_SID: str
+    TWILIO_AUTH_TOKEN: str
+    TWILIO_NUMBER: str
+
     model_config = _base_config
 
 

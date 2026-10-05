@@ -11,6 +11,7 @@ from app.database.models import (
     Shipment,
     ShipmentStatus,
 )
+from app.database.redis import get_shipment_verification_code
 from app.services.base import BaseService
 from app.services.delivery_partner import DeliveryPartnerService
 from app.services.shipment_event import ShipmentEventService
@@ -84,7 +85,9 @@ class ShipmentService(BaseService[Shipment]):
         partner: DeliveryPartner,
     ) -> Shipment:
         # Make sure at least one value is provided
-        update = shipment_update.model_dump(exclude_none=True)
+        update = shipment_update.model_dump(
+            exclude_none=True, exclude={"verification_code"}
+        )
 
         if not update:
             raise HTTPException(
@@ -106,6 +109,16 @@ class ShipmentService(BaseService[Shipment]):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Not authorized",
             )
+
+        # send OTP
+        if shipment_update.status == ShipmentStatus.delivered:
+            code = await get_shipment_verification_code(shipment.id)
+
+            if code != shipment_update.verification_code:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Client not authorized",
+                )
 
         if shipment_update.estimated_delivery:
             shipment.estimated_delivery = shipment_update.estimated_delivery

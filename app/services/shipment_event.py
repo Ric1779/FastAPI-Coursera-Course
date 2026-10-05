@@ -1,8 +1,11 @@
+from random import randint
+
 from fastapi import BackgroundTasks
 from pydantic import NameEmail
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Shipment, ShipmentEvent, ShipmentStatus
+from app.database.redis import add_shipment_verification_code
 from app.services.base import BaseService
 from app.services.notification import NotificationService
 
@@ -83,9 +86,22 @@ class ShipmentEventService(BaseService[ShipmentEvent]):
                 subject = "Your order is Arriving."
                 template_name = "mail_out_for_delivery.html"
 
+                code = randint(100_000, 999_999)
+
+                await add_shipment_verification_code(shipment.id, code)
+                # Trial SMS cannot include a custom body, so the code goes in the email.
+                context["verification_code"] = code
+
+                if shipment.client_contact_phone:
+                    await self.notification_service.send_sms(
+                        to=shipment.client_contact_phone,
+                        body="sms_delivery_updates",
+                    )
+
             case ShipmentStatus.delivered:
                 subject = "Your order is Delivered."
-                template_name = "main_delivered.html"
+                context["seller"] = shipment.seller.name
+                template_name = "mail_delivered.html"
 
             case ShipmentStatus.cancelled:
                 subject = "Your order is Cancelled."
