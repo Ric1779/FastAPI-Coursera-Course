@@ -65,6 +65,11 @@ class Shipment(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "selectin"},
     )
 
+    review: "Review" = Relationship(
+        back_populates="shipment",
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )
+
     @property
     def status(self) -> ShipmentStatus | None:
         """Current status = latest timeline event (status no longer on shipment row)."""
@@ -177,3 +182,19 @@ class DeliveryPartner(User, table=True):
     @property
     def current_handling_capacity(self):
         return self.max_handling_capacity - len(self.active_shipments)
+
+
+class Review(SQLModel, table=True):
+    __tablename__ = "review"  # type: ignore
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None)
+
+    shipment_id: UUID = Field(foreign_key="shipment.id")
+    shipment: Shipment = Relationship(
+        back_populates="review",
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )

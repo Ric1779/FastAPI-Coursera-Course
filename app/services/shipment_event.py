@@ -4,10 +4,12 @@ from fastapi import BackgroundTasks
 from pydantic import NameEmail
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import app_settings
 from app.database.models import Shipment, ShipmentEvent, ShipmentStatus
 from app.database.redis import add_shipment_verification_code
 from app.services.base import BaseService
 from app.services.notification import NotificationService
+from app.utils import generate_url_safe_token
 
 
 class ShipmentEventService(BaseService[ShipmentEvent]):
@@ -101,6 +103,10 @@ class ShipmentEventService(BaseService[ShipmentEvent]):
             case ShipmentStatus.delivered:
                 subject = "Your order is Delivered."
                 context["seller"] = shipment.seller.name
+                token = generate_url_safe_token({"id": str(shipment.id)})
+                context["review_url"] = (
+                    f"http://{app_settings.APP_DOMAIN}/shipment/review?token={token}"
+                )
                 template_name = "mail_delivered.html"
 
             case ShipmentStatus.cancelled:

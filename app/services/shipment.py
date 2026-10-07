@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.schemas.shipment import ShipmentCreate, ShipmentUpdate
 from app.database.models import (
     DeliveryPartner,
+    Review,
     Seller,
     Shipment,
     ShipmentStatus,
@@ -15,6 +16,7 @@ from app.database.redis import get_shipment_verification_code
 from app.services.base import BaseService
 from app.services.delivery_partner import DeliveryPartnerService
 from app.services.shipment_event import ShipmentEventService
+from app.utils import decode_url_safe_token
 
 
 class ShipmentService(BaseService[Shipment]):
@@ -170,3 +172,29 @@ class ShipmentService(BaseService[Shipment]):
             )
         if shipment is not None:
             await self._delete(shipment)
+
+    async def rate(self, token: str, rating: int, comment: str | None):
+        token_data = decode_url_safe_token(token)
+
+        if token_data is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not Authorized.",
+            )
+
+        shipment = await self.get(UUID(token_data["id"]))
+
+        if shipment is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shipment not found",
+            )
+
+        new_review = Review(
+            rating=rating,
+            comment=comment if comment else None,
+            shipment_id=shipment.id,
+        )
+
+        self.session.add(new_review)
+        await self.session.commit()
