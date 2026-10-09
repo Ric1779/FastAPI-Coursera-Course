@@ -118,9 +118,9 @@ async def submit_review_page(
 @router.post("/review")
 async def submit_review(
     token: str,
-    rating: Annotated[int, Form(ge=1, le=5)],
-    comment: Annotated[str | None, Form()],
     service: ShipmentServiceDep,
+    rating: Annotated[int, Form(ge=1, le=5)],
+    comment: Annotated[str | None, Form()] = None,
 ):
     await service.rate(token, rating, comment)
     return {"detail": "Review Submitted"}

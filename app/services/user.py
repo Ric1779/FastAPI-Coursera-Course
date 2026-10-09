@@ -2,21 +2,21 @@ from datetime import timedelta
 from typing import Generic, TypeVar
 from uuid import UUID
 
-from fastapi import BackgroundTasks, HTTPException, status
+from fastapi import HTTPException, status
 from passlib.context import CryptContext  # type: ignore
-from pydantic import EmailStr, NameEmail
+from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.config import app_settings
 from app.database.models import User
 from app.services.base import BaseService
-from app.services.notification import NotificationService
 from app.utils import (
     decode_url_safe_token,
     generate_access_token,
     generate_url_safe_token,
 )
+from app.worker.tasks import send_email_with_template
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -24,11 +24,8 @@ UserType = TypeVar("UserType", bound=User)
 
 
 class UserService(BaseService[UserType], Generic[UserType]):
-    def __init__(
-        self, model: type[UserType], session: AsyncSession, tasks: BackgroundTasks
-    ):
+    def __init__(self, model: type[UserType], session: AsyncSession):
         super().__init__(model, session)
-        self.notification_service = NotificationService(tasks)
 
     async def _add_user(
         self,
@@ -49,8 +46,8 @@ class UserService(BaseService[UserType], Generic[UserType]):
             }
         )
 
-        await self.notification_service.send_email_with_template(
-            recipients=[NameEmail(name="", email=user.email)],
+        send_email_with_template.delay(  # type: ignore[attr-defined]
+            recipients=[user.email],
             subject="Verify your account with Fastship",
             context={
                 "username": user.name,
@@ -136,8 +133,8 @@ class UserService(BaseService[UserType], Generic[UserType]):
             salt="password-reset",
         )
 
-        await self.notification_service.send_email_with_template(
-            recipients=[NameEmail(name="", email=user.email)],
+        send_email_with_template.delay(  # type: ignore[attr-defined]
+            recipients=[user.email],
             subject="FastShip account password reset",
             context={
                 "username": user.name,

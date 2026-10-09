@@ -1,21 +1,18 @@
 from random import randint
 
-from fastapi import BackgroundTasks
-from pydantic import NameEmail
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import app_settings
 from app.database.models import Shipment, ShipmentEvent, ShipmentStatus
 from app.database.redis import add_shipment_verification_code
 from app.services.base import BaseService
-from app.services.notification import NotificationService
 from app.utils import generate_url_safe_token
+from app.worker.tasks import send_email_with_template, send_sms
 
 
 class ShipmentEventService(BaseService[ShipmentEvent]):
-    def __init__(self, session: AsyncSession, tasks: BackgroundTasks):
+    def __init__(self, session: AsyncSession):
         super().__init__(ShipmentEvent, session)
-        self.notification_service = NotificationService(tasks)
 
     async def add(
         self,
@@ -79,7 +76,7 @@ class ShipmentEventService(BaseService[ShipmentEvent]):
         match status:
             case ShipmentStatus.placed:
                 subject = "Your order is Shipped."
-                context["id"] = shipment.id
+                context["id"] = str(shipment.id)
                 context["seller"] = shipment.seller.name
                 context["partner"] = shipment.delivery_partner.name
                 template_name = "mail_placed.html"
@@ -95,7 +92,7 @@ class ShipmentEventService(BaseService[ShipmentEvent]):
                 context["verification_code"] = code
 
                 if shipment.client_contact_phone:
-                    await self.notification_service.send_sms(
+                    send_sms.delay(  # type: ignore[attr-defined]
                         to=shipment.client_contact_phone,
                         body="sms_delivery_updates",
                     )
@@ -116,10 +113,8 @@ class ShipmentEventService(BaseService[ShipmentEvent]):
             case _:
                 return
 
-        await self.notification_service.send_email_with_template(
-            recipients=[
-                NameEmail(name="", email=shipment.client_contact_email),
-            ],
+        send_email_with_template.delay(  # type: ignore[attr-defined]
+            recipients=[shipment.client_contact_email],
             subject=subject,
             context=context,
             template_name=template_name,
