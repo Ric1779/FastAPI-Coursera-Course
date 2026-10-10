@@ -11,6 +11,7 @@ from app.database.models import (
     Seller,
     Shipment,
     ShipmentStatus,
+    TagName,
 )
 from app.database.redis import get_shipment_verification_code
 from app.services.base import BaseService
@@ -172,6 +173,51 @@ class ShipmentService(BaseService[Shipment]):
             )
         if shipment is not None:
             await self._delete(shipment)
+
+    async def add_tag(self, id: UUID, tag_name: TagName):
+        shipment = await self.get(id)
+
+        if not shipment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shipment not found.",
+            )
+
+        tag = await tag_name.tag(self.session)
+        if tag is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tag not found.",
+            )
+
+        shipment.tags.append(tag)
+
+        return await self._update(shipment)
+
+    async def remove_tag(self, id: UUID, tag_name: TagName):
+        shipment = await self.get(id)
+
+        if not shipment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shipment not found.",
+            )
+
+        tag = await tag_name.tag(self.session)
+        if tag is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tag not found.",
+            )
+        try:
+            shipment.tags.remove(tag)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tag doesn't exist on shipment.",
+            )
+
+        return await self._update(shipment)
 
     async def rate(self, token: str, rating: int, comment: str | None):
         token_data = decode_url_safe_token(token)
