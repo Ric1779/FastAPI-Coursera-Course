@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 
-from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import any_, select
 
 from app.api.schemas.delivery_partner import (
     DeliveryPartnerCreate,
 )
+from app.core.exceptions import DeliveryPartnerCapacityExceeded
 from app.database.models import DeliveryPartner, Shipment
 from app.services.user import UserService
 
@@ -40,10 +40,7 @@ class DeliveryPartnerService(UserService[DeliveryPartner]):
                 partner.shipments.append(shipment)
                 return partner
 
-        raise HTTPException(
-            status_code=status.HTTP_406_NOT_ACCEPTABLE,
-            detail="No delivery partner available",
-        )
+        raise DeliveryPartnerCapacityExceeded()
 
     async def token(self, email, password) -> str:
         return await self._generate_token(email, password)

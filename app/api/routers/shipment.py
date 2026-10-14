@@ -1,10 +1,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Form, Request, status
 from fastapi.templating import Jinja2Templates
 
+from app.api.tag import APITag
 from app.config import app_settings
+from app.core.exceptions import EntityNotFound
 from app.database.models import Shipment, TagName
 from app.utils import TEMPLATE_DIR
 
@@ -15,7 +17,7 @@ from ..schemas.shipment import (
     ShipmentUpdate,
 )
 
-router = APIRouter(prefix="/shipment", tags=["Shipment"])
+router = APIRouter(prefix="/shipment", tags=[APITag.SHIPMENT])
 
 templates = Jinja2Templates(TEMPLATE_DIR)
 
@@ -26,16 +28,7 @@ async def get_shipment(
     service: ShipmentServiceDep,
     _: SellerDep,
 ):
-
-    shipment = await service.get(id)
-
-    if shipment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Given id does not exists.",
-        )
-
-    return shipment
+    return await service.get(id)
 
 
 # Random note: response_model is primarily for data validation and serialization,
@@ -50,10 +43,7 @@ async def get_tracking(request: Request, id: UUID, service: ShipmentServiceDep):
     shipment = await service.get(id)
 
     if shipment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Given id does not exists.",
-        )
+        raise EntityNotFound()
 
     context = shipment.model_dump()
     context["status"] = shipment.status
@@ -73,7 +63,19 @@ async def get_tracking(request: Request, id: UUID, service: ShipmentServiceDep):
     )
 
 
-@router.post("/", response_model=ShipmentRead)
+@router.post(
+    "/",
+    response_model=ShipmentRead,
+    name="Submit Shipment",
+    description="Submit a new **shipment**.",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {"description": "Shipment created"},
+        status.HTTP_406_NOT_ACCEPTABLE: {
+            "description": "Delivery partner not available."
+        },
+    },
+)
 async def submit_shipment(
     shipment: ShipmentCreate,
     service: ShipmentServiceDep,
@@ -99,10 +101,7 @@ async def get_shipments_with_tags(
 ):
     tag = await tag_name.tag(session)
     if tag is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tag not found.",
-        )
+        raise EntityNotFound()
     return tag.shipments
 
 

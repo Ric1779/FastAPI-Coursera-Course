@@ -2,13 +2,18 @@ from datetime import timedelta
 from typing import Generic, TypeVar
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from passlib.context import CryptContext  # type: ignore
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.config import app_settings
+from app.core.exceptions import (
+    BadCredentials,
+    ClientNotVerified,
+    EntityNotFound,
+    InvalidToken,
+)
 from app.database.models import User
 from app.services.base import BaseService
 from app.utils import (
@@ -65,17 +70,11 @@ class UserService(BaseService[UserType], Generic[UserType]):
         )
 
         if not token_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token",
-            )
+            raise InvalidToken()
 
         user = await self._get(UUID(token_data["id"]))
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise EntityNotFound()
 
         user.email_verified = True
         await self._update(user)
@@ -95,16 +94,10 @@ class UserService(BaseService[UserType], Generic[UserType]):
             password,
             user.password_hash,
         ):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Email or password is incorrect!",
-            )
+            raise BadCredentials()
 
         if not user.email_verified:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email not verified!",
-            )
+            raise ClientNotVerified()
 
         token = generate_access_token(
             data={
@@ -121,10 +114,7 @@ class UserService(BaseService[UserType], Generic[UserType]):
         user = await self._get_by_email(email)
 
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise EntityNotFound()
 
         token = generate_url_safe_token(
             data={
@@ -155,10 +145,7 @@ class UserService(BaseService[UserType], Generic[UserType]):
 
         user = await self._get(UUID(token_data["id"]))
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise EntityNotFound()
 
         user.password_hash = password_context.hash(password)
 

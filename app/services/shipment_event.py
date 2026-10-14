@@ -79,6 +79,9 @@ class ShipmentEventService(BaseService[ShipmentEvent]):
                 context["id"] = str(shipment.id)
                 context["seller"] = shipment.seller.name
                 context["partner"] = shipment.delivery_partner.name
+                context["track_url"] = (
+                    f"http://{app_settings.APP_DOMAIN}/shipment/track?id={shipment.id}"
+                )
                 template_name = "mail_placed.html"
 
             case ShipmentStatus.out_for_delivery:

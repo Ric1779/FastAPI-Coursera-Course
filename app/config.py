@@ -9,7 +9,7 @@ _base_config = SettingsConfigDict(
 
 class AppSettings(BaseSettings):
     APP_NAME: str = "FastShip"
-    APP_DOMAIN: str = "localhost:8000"
+    APP_DOMAIN: str = "localhost:8010"
 
     model_config = _base_config
 
