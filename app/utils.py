@@ -4,6 +4,9 @@ from uuid import uuid4
 
 import jwt
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from rich import print as rich_print
+from rich.json import JSON
+from rich.panel import Panel
 
 from app.config import security_settings
 
@@ -38,6 +41,10 @@ def decode_access_token(token: str) -> dict | None:
         )
     except jwt.PyJWTError:
         return None
+
+
+def print_label(data: dict) -> None:
+    rich_print(Panel(JSON.from_data(data), border_style="grey50"))
 
 
 def generate_url_safe_token(data: dict, salt: str | None = None) -> str:
