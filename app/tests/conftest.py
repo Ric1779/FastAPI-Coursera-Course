@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 
 from app.database.session import get_session
 from app.main import app, get_id
+from app.tests.example import SELLER, create_test_data
 
 engine = create_async_engine(url="sqlite+aiosqlite:///:memory:")
 
@@ -35,6 +36,21 @@ def get_id_override():
     return UUID("ac5024e9-fb46-45a4-b1d5-51931657796a")
 
 
+@pytest_asyncio.fixture(scope="session")
+async def seller_token(client: AsyncClient):
+    response = await client.post(
+        "/seller/token",
+        data={
+            "grant_type": "password",
+            "username": SELLER["email"],
+            "password": SELLER["password"],
+        },
+    )
+
+    assert "access_token" in response.json()
+    return response.json()["access_token"]
+
+
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_and_teardown():
 
@@ -51,6 +67,9 @@ async def setup_and_teardown():
         )
 
         await connection.run_sync(SQLModel.metadata.create_all)
+
+    async with test_session() as session:
+        await create_test_data(session)
 
     yield
 

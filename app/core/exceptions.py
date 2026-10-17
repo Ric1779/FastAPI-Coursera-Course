@@ -16,6 +16,12 @@ class EntityNotFound(FastShipError):
     status = status.HTTP_404_NOT_FOUND
 
 
+class BadPassword(FastShipError):
+    """Password is not strong enough or invalid"""
+
+    status = status.HTTP_400_BAD_REQUEST
+
+
 class ClientNotAuthorized(FastShipError):
     """Client is not authorized to perform the action"""
 

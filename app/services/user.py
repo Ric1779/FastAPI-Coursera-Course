@@ -3,6 +3,7 @@ from typing import Generic, TypeVar
 from uuid import UUID
 
 from passlib.context import CryptContext  # type: ignore
+from passlib.exc import PasswordValueError  # type: ignore
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -10,6 +11,7 @@ from sqlmodel import select
 from app.config import app_settings
 from app.core.exceptions import (
     BadCredentials,
+    BadPassword,
     ClientNotVerified,
     EntityNotFound,
     InvalidToken,
@@ -37,10 +39,13 @@ class UserService(BaseService[UserType], Generic[UserType]):
         user_create_data: dict,
         router_prefix: str,
     ) -> UserType:  # user_create_data contains the password!
-        user = self.model(
-            **{k: v for k, v in user_create_data.items() if k != "password"},
-            password_hash=password_context.hash(user_create_data["password"]),
-        )
+        try:
+            user = self.model(
+                **{k: v for k, v in user_create_data.items() if k != "password"},
+                password_hash=password_context.hash(user_create_data["password"]),
+            )
+        except PasswordValueError:
+            raise BadPassword()
 
         user = await self._add(user)
 

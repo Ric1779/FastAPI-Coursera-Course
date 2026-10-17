@@ -215,7 +215,7 @@ class ServiceableLocation(SQLModel, table=True):
         primary_key=True,
     )
 
-    location_id: UUID = Field(
+    location_id: int = Field(
         foreign_key="location.zip_code",
         primary_key=True,
     )
@@ -257,7 +257,7 @@ class Location(SQLModel, table=True):
     zip_code: int = Field(primary_key=True)
 
     delivery_partners: list[DeliveryPartner] = Relationship(
-        back_populates="serviceable_location",
+        back_populates="serviceable_locations",
         link_model=ServiceableLocation,
         sa_relationship_kwargs={"lazy": "selectin"},
     )
