@@ -26,7 +26,6 @@ templates = Jinja2Templates(TEMPLATE_DIR)
 async def get_shipment(
     id: UUID,
     service: ShipmentServiceDep,
-    _: SellerDep,
 ):
     return await service.get(id)
 

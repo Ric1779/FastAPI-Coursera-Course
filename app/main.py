@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from scalar_fastapi import get_scalar_api_reference
 
 from app.api.router import master_router
@@ -34,27 +35,35 @@ Delivery Management system for seller and delivery agents
 - Email and sms notification
 """
 
+tags_metadata = [
+    {
+        "name": APITag.SHIPMENT,
+        "description": "Operations related to shipments.",
+    },
+    {
+        "name": APITag.SELLER,
+        "description": "Operations related to users.",
+    },
+    {
+        "name": APITag.PARTNER,
+        "description": "Operations related to delivery partner.",
+    },
+]
+
+
+def custom_generate_unique_id_function(route: APIRoute) -> str:
+    return route.name
+
+
 app = FastAPI(
     title="FastShip",
     description=description,
     docs_url=None,
     redoc_url=None,
     version="0.1.0",
-    openapi_tags=[
-        {
-            "name": APITag.SHIPMENT,
-            "description": "Operations related to shipments.",
-        },
-        {
-            "name": APITag.SELLER,
-            "description": "Operations related to users.",
-        },
-        {
-            "name": APITag.PARTNER,
-            "description": "Operations related to delivery partner.",
-        },
-    ],
+    openapi_tags=tags_metadata,
     lifespan=lifespan_handler,
+    generate_unique_id_function=custom_generate_unique_id_function,
 )
 
 add_exception_handlers(app)
@@ -62,7 +71,9 @@ add_exception_handlers(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -86,7 +97,7 @@ app.include_router(master_router)
 # test celery worker, by querying this endpoint multiple times.
 @app.get("/test")
 def test():
-    now = datetime.now()  # noqa: DTZ005
+    now = datetime.now()
     background_task.delay(  # type: ignore[attr-defined]
         f"Background Taks {now.second}",
         data={

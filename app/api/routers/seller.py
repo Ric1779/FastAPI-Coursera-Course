@@ -5,8 +5,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
 
-from app.api.dependencies import SellerServiceDep, get_seller_access_token_data
+from app.api.dependencies import (
+    SellerDep,
+    SellerServiceDep,
+    get_seller_access_token_data,
+)
 from app.api.schemas.seller import SellerCreate, SellerRead
+from app.api.schemas.shipment import ShipmentRead
 from app.api.tag import APITag
 from app.config import app_settings
 from app.database.redis import add_jti_to_blacklist
@@ -23,6 +28,16 @@ async def verify_seller_email(
 ) -> dict:
     await service.verify_email(token)
     return {"detail": "Account Verified!"}
+
+
+@router.get("/me", response_model=SellerRead)
+async def get_seller_profile(seller: SellerDep):
+    return seller
+
+
+@router.get("/shipments", response_model=list[ShipmentRead])
+async def get_shipments(seller: SellerDep):
+    return seller.shipments
 
 
 ###################################################
